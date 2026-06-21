@@ -7,7 +7,8 @@ app = Flask(__name__)
 def get_info():
     info = {
         'hostname': socket.gethostname(),
-        'timestamp': datetime.datetime.now().isoformat()
+        'timestamp': datetime.datetime.now().isoformat(),
+        "env": "dev"
     }
     return jsonify(info)
 
