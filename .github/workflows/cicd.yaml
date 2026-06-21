@@ -6,10 +6,8 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    outputs:
-      short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
     steps:
-      - name: Checkout code
+      - name: Checkout app code
         uses: actions/checkout@v3
 
       - name: Get short SHA
@@ -21,9 +19,34 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/python-app:${{ steps.get-short-sha.outputs.short-sha }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/python-app:${{ steps.get-short-sha.outputs.short-sha }}
+            ${{ secrets.DOCKER_USERNAME }}/python-app:latest
+
+      # --- BURASI INFRA REPO'YU GÜNCELLEYEN KISIM ---
+      - name: Update Infra Repo
+        env:
+          NEW_TAG: ${{ steps.get-short-sha.outputs.short-sha }}
+        run: |
+          # Git ayarlarını yap
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          
+          # Infra reposunu Token kullanarak klonla
+          git clone https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/enesdemir0/infra-repo-.git
+          cd infra-repo-
+          
+          # values.yaml içindeki tag değerini yeni SHA ile değiştir
+          # 'tag: ' ile başlayan satırı bulur ve yeni tag ile günceller
+          sed -i "s/tag: .*/tag: \"$NEW_TAG\"/" helm-charts/python-app/values.yaml
+          
+          # Değişikliği commitle ve geri pushla
+          git add .
+          git commit -m "GitOps: Update image tag to $NEW_TAG"
+          git push
